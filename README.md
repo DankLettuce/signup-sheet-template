@@ -227,7 +227,7 @@ node scripts/ui-check.mjs                    # terminal 2; screenshots: /tmp/ui-
 
 ---
 
-## Setup-bot guide (for dr eggbot: designing the shareable setup bot)
+## Setup guide for a bot
 
 The setup bot only has to **fill in `site.config.json`, then run the commands above**. Suggested
 conversation, in plain words, one question at a time:
