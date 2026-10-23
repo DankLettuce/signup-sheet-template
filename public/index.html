@@ -68,7 +68,7 @@
 
     <p id="mine" class="mine" hidden><span id="mine-text"></span> <button type="button" class="mini-link" id="mine-edit">Edit</button></p>
 
-    <!-- Organizer page (this phone only; turned on with the "Organizer" link at the bottom) -->
+    <!-- Organizer page (after the organizer password, from the "Organizer" link at the bottom; the server checks every organizer action) -->
     <section id="org-bar" class="org-bar" aria-labelledby="org-title" hidden>
       <h2 id="org-title" class="org-title">Organizer</h2>
       <p class="org-help">Change the event details and items here. Under each item: Spots, Rename, Remove, and ↑ ↓ to move it. <span id="org-code-state"></span></p>
@@ -76,9 +76,8 @@
         <button type="button" class="btn btn-secondary small" id="org-details">Event details</button>
         <button type="button" class="btn btn-secondary small" id="org-add">Add an item</button>
         <a class="btn btn-secondary small" id="org-backup" href="/api/export.csv" download>Back up the list</a>
-        <a class="btn btn-secondary small" id="org-copy" href="/api/event-copy.json" download>Copy this event</a>
       </div>
-      <p class="org-help small">“Back up the list” saves a spreadsheet file (who’s bringing what). <a id="org-backup-json" href="/api/export.json" download>Full backup file</a> keeps everything, even removed sign-ups. “Copy this event” saves the details and items (no names) to start a new sign-up page.</p>
+      <p class="org-help small">“Back up the list” saves a spreadsheet file (who’s bringing what). <a id="org-backup-json" href="/api/export.json" download>Full backup file</a> keeps everything, even removed sign-ups.</p>
       <p><button type="button" class="mini-link" id="org-off">Turn off Organizer mode</button></p>
     </section>
 
@@ -88,7 +87,11 @@
     </section>
 
     <p class="editnote">Tap everything you can bring, then “Sign me up”. Anyone with this link can change sign-ups: tap a name to edit or remove it.</p>
-    <!-- "Add your own": app.js moves it below the list (default, setting add_your_own = bottom) or keeps it here (top) -->
+    <!-- Open items, then "Add your own", then the covered items: so "Add your own" sits between what still needs
+         someone and what's already claimed (at the bottom when nothing is claimed; it moves up as items fill).
+         Organizer mode shows every item in #list in true order, with "Add your own" after it. -->
+    <div class="list" id="list" aria-live="polite"></div>
+
     <div class="card own" id="own">
       <label class="own-label" for="own-item-1"><span class="own-plus" aria-hidden="true">+</span> Add your own</label>
       <!-- app.js keeps one blank box at the end: typing in it adds another below (max 8 new items per sign-up) -->
@@ -96,7 +99,7 @@
       <p class="own-state" id="own-state" aria-live="polite"></p>
     </div>
 
-    <div class="list" id="list" aria-live="polite"></div>
+    <div class="list list-covered" id="list-covered" aria-live="polite" hidden></div>
 
     <details id="removed" class="card removed" hidden>
       <summary>Recently removed<span id="removed-count"></span></summary>

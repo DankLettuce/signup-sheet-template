@@ -25,7 +25,6 @@
     "use_code": true,
     "_note": "Never put the code itself in this file or in git. Set it as a secret: npx wrangler pages secret put CLASS_CODE --project-name <project_name>. For local testing: CLASS_CODE=... in .dev.vars (gitignored)."
   },
-  "add_your_own": "bottom",
   "items": [
     { "name": "Snacks/treats", "spots": 3 },
     { "name": "Drinks (juice boxes/water)", "spots": 1 },

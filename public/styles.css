@@ -90,7 +90,7 @@ a.btn { text-decoration: none; }
 .iconbtn[hidden] { display: none; }
 .card.covered .who, .card.covered .org-row { margin: 0; padding: 0 var(--s-4) var(--s-3); }
 /* 'Add your own' */
-.own { margin-bottom: var(--s-4); }   /* sits above the list */
+.own { margin: var(--s-4) 0; }   /* between the open items (#list) and the covered ones (#list-covered) */
 .own-label { display: flex; align-items: center; gap: 8px; font: 600 var(--fs-h2)/1.15 var(--font-display); margin-bottom: 8px; }
 .own-plus { font-weight: 800; }
 .own.on { outline: 3px solid var(--c-focus); }
@@ -266,7 +266,6 @@ html.kb-open .sheet-actions { padding-bottom: 10px; }   /* keyboard open: no hom
 .org-actions .btn { margin: 0; min-height: var(--tap, 44px); font-size: 16px; padding: 0 8px; text-align: center; }
 .org-row .mini-link.mv { min-width: var(--tap, 44px); min-height: var(--tap, 44px); font-size: 20px; font-weight: 800; padding: 0; }
 .org-row .mini-link.mv:disabled { opacity: .35; }
-.own.own-bottom { margin-top: var(--s-4); }
 .foot .contact { margin: 8px 0 0; font-size: var(--fs-small, 15px); }
 label.who-label { margin-top: 0; }
 select.input { appearance: auto; }
@@ -274,3 +273,8 @@ select.input { appearance: auto; }
 .org-row:has(.mv) { flex-wrap: nowrap; align-items: center; }
 .org-row .mini-link.mv { min-width: 40px; flex: none; }
 .org-row .mini-link.mv[data-move="up"] { margin-left: auto; }
+
+/* QA round 1, item 9: while a sheet is open the toast shows at the top of the visible screen (the sheet's Save
+   button is at the bottom), docked to visualViewport.offsetTop (--vvt) so it stays visible with the keyboard up. */
+.toast.at-top { top: calc(var(--vvt, 0px) + 10px + env(safe-area-inset-top)); bottom: auto; transform: translate(-50%, calc(-100% - 40px)); }
+.toast.at-top.show { transform: translate(-50%, 0); }

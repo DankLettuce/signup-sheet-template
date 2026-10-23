@@ -1,12 +1,13 @@
 // Revert everything one visitor changed since a given Eastern time.
 //   node scripts/revert-visitor.mjs --list --since "2026-10-25 14:00"            # who changed what
 //   node scripts/revert-visitor.mjs --visitor <hash> --since "2026-10-25 14:00" --dry-run
-//   node scripts/revert-visitor.mjs --ip 203.0.113.7 --since "2026-10-25 14:00"   # hashes the IP (IPv6 -> /64); pass --salt (or env VISITOR_SALT) if the site has one
+//   node scripts/revert-visitor.mjs --ip 203.0.113.7 --since "2026-10-25 14:00"   # hashes the IP (IPv6 -> /64) with the site's salt:
+//   set env VISITOR_SALT (or PASS_SECRET, if the site has no VISITOR_SALT) to the same value as the Pages secret, or pass --salt
 // Add --remote for production (default is the local dev DB). Optional --until "...".
 // Each touched row is put back to how it was before the visitor's FIRST change in the
 // window (sign-ups they added are removed). A summary row is written to history.
 import { q, d1, flag, opt, lit, etToUtc, utcToEt, REMOTE } from './_d1.mjs';
-import { visitorKey, hashVisitor } from '../lib/visitor.js';
+import { visitorKey, hashVisitor, visitorSalt } from '../lib/visitor.js';
 
 const since = etToUtc(opt('since'));
 const until = opt('until') ? etToUtc(opt('until')) : '9999-12-31 00:00:00';
@@ -21,7 +22,7 @@ if (flag('list')) {
   process.exit(0);
 }
 
-const who = opt('visitor') || (opt('ip') && await hashVisitor(visitorKey(opt('ip')), opt('salt') || process.env.VISITOR_SALT));
+const who = opt('visitor') || (opt('ip') && await hashVisitor(visitorKey(opt('ip')), opt('salt') || visitorSalt(process.env)));
 if (!who || !/^[0-9a-f]{24}$/.test(who)) { console.error('Need --visitor <24-hex hash> or --ip <address>'); process.exit(2); }
 
 const hist = q(`SELECT id, at, action, tbl, row_id, before_json FROM history

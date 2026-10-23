@@ -18,7 +18,8 @@
   const mineIds = () => { const a = store.get('hs-mine', []); return Array.isArray(a) ? a.filter(Number.isInteger) : []; };
   const addMine = ids => store.set('hs-mine', [...new Set([...mineIds(), ...ids])]);
   const dropMine = ids => store.set('hs-mine', mineIds().filter(x => !ids.includes(x)));
-  const isOrg = () => store.get('hs-org', false) === true;                                             // Organizer mode, per phone
+  // Organizer mode: on only while the server says this phone has a valid organizer cookie (password entered, 12 h).
+  const isOrg = () => !!(state && state.organizer) && store.get('hs-org', false) === true;
   const selected = new Set();   // item ids tapped "I'm bringing this"
   const expanded = new Set();   // covered items opened to show who
 
@@ -46,6 +47,9 @@
       b.addEventListener('click', () => { t.classList.remove('show'); action.run(); });
       t.append(b);
     }
+    // While a sheet is open its Save button is at the bottom, so the toast goes to the top of the visible screen
+    // instead (decided when shown, so it doesn't jump when the sheet then closes).
+    t.classList.toggle('at-top', document.body.classList.contains('sheet-open'));
     t.classList.toggle('error', !!isError); t.classList.toggle('has-action', !!action); t.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), action ? 7000 : isError ? 6000 : 2800);
   }
@@ -65,7 +69,12 @@
     try {
       const res = await fetch('/api/state', { cache: 'no-store' });
       if (res.status === 401) { let d = null; try { d = await res.json(); } catch (_) {} if (d && d.gate) showGate(d.event_name); return null; }
-      if (!res.ok) return null;
+      if (!res.ok) { // 429 = too many wrong codes / bad passes; 503 = the site's secrets aren't set up yet
+        let d = null; try { d = await res.json(); } catch (_) {}
+        if (res.status === 429) { showGate(); $('#gate-msg').textContent = (d && d.error) || 'Too many tries. Please wait and try again.'; }
+        else if (!state && d && d.error) toast(d.error, true);
+        return null;
+      }
       const data = await res.json();
       if (applied !== seenAt) return null; // a write landed meanwhile; its result is newer
       setState(data); return data;
@@ -98,6 +107,9 @@
         }
         if (res.status >= 500 && attempt < 2) { await sleep(1000 * 2 ** attempt); continue; }
         if (res.status === 401 && data && data.gate) { lastError = { status: 401, data }; showGate(); return null; }
+        if (res.status === 401 && data && data.organizer) { // organizer cookie missing or expired
+          lastError = { status: 401, data }; store.set('hs-org', false); toast(data.error, true); refresh(); return null;
+        }
         if (!res.ok) { lastError = { status: res.status, data }; toast((data && data.error) || 'Something went wrong. Please try again.', true); return null; }
         lastError = null; applied = seq;
         if (data && Array.isArray(data.created)) addMine(data.created.map(c => c.id)); // this phone's sign-ups
@@ -184,7 +196,7 @@
   }
   function renderRemoved() {
     const box = $('#removed'), ul = $('#removed-list');
-    const items = state.removed_items || [], ents = state.removed || [];
+    const items = isOrg() ? state.removed_items || [] : [], ents = state.removed || []; // putting back an item is organizer-only
     ul.replaceChildren();
     box.hidden = !items.length && !ents.length;
     $('#removed-count').textContent = items.length + ents.length ? ` (${items.length + ents.length})` : '';
@@ -234,13 +246,15 @@
     renderSummary();
     renderMine();
     // open items first; otherwise the server's stable order (sort, id). Organizer mode shows the true list order so ↑ ↓ make sense.
-    const ordered = org ? state.items : [...state.items.filter(i => !covered(i)), ...state.items.filter(covered)];
-    $('#list').replaceChildren(...ordered.map(renderItem));
+    // Parents: open items in #list, covered ones in #list-covered, with "Add your own" between them (index.html).
+    const open = org ? state.items : state.items.filter(i => !covered(i)), done = org ? [] : state.items.filter(covered);
+    $('#list').replaceChildren(...open.map(renderItem)); $('#list').hidden = !open.length;
+    $('#list-covered').replaceChildren(...done.map(renderItem)); $('#list-covered').hidden = !done.length;
     renderRemoved();
     updateBar();
   }
 
-  // ---------- event details (header, title, intro, banner, contact, "Add your own" position) ----------
+  // ---------- event details (header, title, intro, banner, contact) ----------
   // "Ms. Rivera’s 2nd Grade" / "Mr. Jones’ Class" / "2nd Grade" (any part may be blank)
   const classLabel = s => [s.teacher ? s.teacher + (/s$/i.test(s.teacher) ? '’' : '’s') : '', s.class_name].filter(Boolean).join(' ');
   function renderEvent(org) {
@@ -256,11 +270,6 @@
     const c = [s.organizer_name, s.organizer_contact].filter(Boolean);
     $('#ev-contact').textContent = c.length ? 'Questions? ' + c.join(' · ') : ''; $('#ev-contact').hidden = !c.length;
     setBanner(s.banner || 'animated');
-    // "Add your own" goes after the list (and after the items already signed up) unless the organizer picked "top"
-    const own = $('#own'), list = $('#list');
-    if ((s.add_your_own || 'bottom') === 'top') { if (own.nextElementSibling !== list) list.before(own); }
-    else if (list.nextElementSibling !== own) list.after(own);
-    own.classList.toggle('own-bottom', s.add_your_own !== 'top');
     $('#org-code-state').textContent = state.code ? 'Class code: on (people need the code from your email).' : 'Class code: off (anyone with the link can open it).';
   }
 
@@ -403,9 +412,7 @@
         const who = textInput('bringer', draft.bringer !== null ? draft.bringer : myName(), L.name, 'e.g. Sam R.');
         who.id = 'f-bringer'; who.classList.add('who-input');
         const wl = el('label', 'f who-label', 'Your name (shown on the list)'); wl.htmlFor = 'f-bringer'; wl.id = 'who-label';
-        who.setAttribute('autocomplete', 'off'); who.setAttribute('autocorrect', 'off'); who.setAttribute('autocapitalize', 'words');
-        who.setAttribute('spellcheck', 'false'); who.setAttribute('enterkeyhint', 'done'); who.setAttribute('aria-labelledby', 'who-label');
-        who.setAttribute('aria-describedby', 'who-help'); who.required = true;
+        whoAttrs(who); who.setAttribute('aria-labelledby', 'who-label'); who.setAttribute('aria-describedby', 'who-help');
         const help = el('div', 'help who-help', 'Other families see it next to what you’re bringing. Saved on this phone.'); help.id = 'who-help';
         const picks = el('p', 'picks');
         const edit = el('button', 'mini-link', 'Edit'); edit.type = 'button'; edit.id = 'picks-edit'; edit.setAttribute('aria-label', 'Edit your picks');
@@ -462,20 +469,52 @@
     box.hidden = !lines.length;
   }
 
-  // ---------- Organizer mode (no password; this phone only) ----------
-  const setOrg = on => { store.set('hs-org', on); render(); toast(on ? 'Organizer mode on: event details and items can be changed.' : 'Organizer mode off.'); };
-  $('#org-toggle').addEventListener('click', () => setOrg(!isOrg()));
-  $('#org-off').addEventListener('click', () => setOrg(false));
+  // ---------- Organizer mode (organizer password; the server checks it on every organizer action) ----------
+  const orgOn = () => { store.set('hs-org', true); render(); toast('Organizer mode on: event details and items can be changed.'); };
+  async function orgOff() {
+    store.set('hs-org', false);
+    try { await fetch('/api/organizer/logout', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (_) {}
+    await refresh(); render(); toast('Organizer mode off.');
+  }
+  function orgPasswordSheet() {
+    openSheet({
+      title: 'Organizer password',
+      build: f => {
+        const i = textInput('orgpw', '', 200, ''); i.type = 'password'; i.setAttribute('autocomplete', 'current-password');
+        i.setAttribute('autocapitalize', 'off'); i.setAttribute('autocorrect', 'off'); i.setAttribute('spellcheck', 'false'); i.required = true;
+        f.append(field('Password', false, i, 'Only the organizer has it. Parents don’t need it to sign up.'));
+      },
+      confirm: 'Open Organizer mode',
+      onSubmit: async f => {
+        const password = f.elements.orgpw.value;
+        if (!password) { toast('Please type the organizer password.', true); f.elements.orgpw.focus(); return false; }
+        let res, d = null;
+        try {
+          res = await fetch('/api/organizer/login', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+          try { d = await res.json(); } catch (_) {}
+        } catch (_) { toast('No connection. Please try again.', true); return false; }
+        if (!res.ok) { toast((d && d.error) || 'That password didn’t work.', true); f.elements.orgpw.select(); return false; }
+        await refresh(); orgOn(); return true;
+      },
+    });
+  }
+  $('#org-toggle').addEventListener('click', () => { if (isOrg()) orgOff(); else if (state && state.organizer) orgOn(); else orgPasswordSheet(); });
+  $('#org-off').addEventListener('click', orgOff);
 
   // ---------- bottom sheet ----------
   function field(labelText, optional, control, help) {
     const wrap = el('div', 'field');
     const lab = el('label', 'f', labelText);
     if (optional) lab.append(' ', el('span', null, '(optional)'));
-    control.id = 'f-' + control.name; lab.htmlFor = control.id;
+    if (!control.id) control.id = 'f-' + control.name; lab.htmlFor = control.id;
     wrap.append(lab, control);
     if (help) wrap.append(el('div', 'help', help));
     return wrap;
+  }
+  // The "Your name" box on both the sign-up and the edit sheet: required, no contact AutoFill, words capitalized.
+  function whoAttrs(i) {
+    i.setAttribute('autocomplete', 'off'); i.setAttribute('autocorrect', 'off'); i.setAttribute('autocapitalize', 'words');
+    i.setAttribute('spellcheck', 'false'); i.setAttribute('enterkeyhint', 'done'); i.required = true;
   }
   function textInput(name, value, max, placeholder, multiline) {
     const i = el(multiline ? 'textarea' : 'input', 'input');
@@ -569,12 +608,18 @@
     openSheet({
       title: 'Edit sign-up for ' + it.name,
       build: f => {
-        f.append(field('Your name (shown on the list)', true, textInput('name', entry.name, L.name, ''), 'Other families see it next to the item.'));
+        // Same name box as the sign-up sheet: required, and its name/id avoid "name" with autocomplete off so iPhone
+        // Safari doesn't offer "AutoFill Contact" over it.
+        const who = textInput('bringer', entry.name, L.name, 'e.g. Sam R.');
+        who.id = 'f-bringer-edit'; whoAttrs(who);
+        f.append(field('Your name (shown on the list)', false, who, 'Other families see it next to the item.'));
         f.append(field('Note', true, textInput('note', entry.note, L.note, 'e.g. nut-free, or what time you can help', true)));
       },
       confirm: 'Save changes',
       onSubmit: async f => {
-        const ok = await api('PUT', 'entries/' + entry.id, { name: f.elements.name.value, note: f.elements.note.value });
+        const name = f.elements.bringer.value.replace(/\s+/g, ' ').trim().slice(0, L.name);
+        if (!name) { toast('Please type your name.', true); f.elements.bringer.focus(); return false; }
+        const ok = await api('PUT', 'entries/' + entry.id, { name, note: f.elements.note.value });
         if (ok) toast('Updated. Thank you!');
         return !!ok;
       },
@@ -639,13 +684,12 @@
           f.append(field(label, false, sel));
         };
         pick('s_banner', 'Banner', [['animated', 'Moving picture'], ['still', 'Still picture'], ['none', 'No picture']], s.banner || 'animated');
-        pick('s_add_your_own', '“Add your own” box', [['bottom', 'Below the list'], ['top', 'Above the list']], s.add_your_own || 'bottom');
       },
       confirm: 'Save',
       onSubmit: async f => {
         const values = {};
         for (const [k] of DETAILS) values[k] = f.elements['s_' + k].value;
-        values.banner = f.elements.s_banner.value; values.add_your_own = f.elements.s_add_your_own.value;
+        values.banner = f.elements.s_banner.value;
         if (!values.event_name.trim()) { toast('Please type an event name.', true); f.elements.s_event_name.focus(); return false; }
         const ok = await api('PUT', 'settings', { values });
         if (ok) toast('Saved.');
@@ -683,6 +727,7 @@
     sheet.style.setProperty('--vvb', Math.round(vv.offsetTop + vv.height) + 'px');
     sheet.style.setProperty('--vvh', Math.round(vv.height) + 'px');
     sheet.style.setProperty('--kb', kb + 'px');
+    root.style.setProperty('--vvt', Math.round(vv.offsetTop) + 'px'); // top of the visible screen (toast while a sheet is open)
     root.style.setProperty('--kb', kb + 'px'); // sticky multi-select bar
     root.classList.toggle('kb-open', kb > 80);
     const a = document.activeElement;   // keep the focused field in view inside the sheet's scroll area

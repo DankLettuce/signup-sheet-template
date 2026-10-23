@@ -9,8 +9,7 @@ INSERT OR IGNORE INTO settings(key, value) VALUES
   ('intro', 'Help make our class party a real treat! Tap what you can bring, then sign up once.'),
   ('banner', 'animated'),
   ('organizer_name', 'Jamie Example'),
-  ('organizer_contact', 'jamie@example.com'),
-  ('add_your_own', 'bottom');
+  ('organizer_contact', 'jamie@example.com');
 
 INSERT INTO items(name, needed, sort)
 SELECT * FROM (VALUES

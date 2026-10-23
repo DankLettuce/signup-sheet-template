@@ -4,13 +4,15 @@
 // Defences: optional class code (env CLASS_CODE), strict validation + length limits,
 // prepared statements only, per-visitor rate limits (burst + 10-minute), soft delete +
 // full history so any change can be undone.
-import { visitorKey, hashVisitor } from '../../lib/visitor.js';
+import { visitorKey, hashVisitor, visitorSalt } from '../../lib/visitor.js';
 import { buildIcs, parsePartyDate } from '../../lib/ics.js';
 import { SETTINGS } from '../../lib/settings.js';
-import { gateActive, gateToken, hasPass, passCookie, codeMatches } from '../../lib/gate.js';
+import { gateStatus, gateToken, passState, passCookie, clearPassCookie, codeMatches, SECRET_HELP } from '../../lib/gate.js';
+import { orgStatus, isOrgRoute, passwordMatches, orgToken, orgState, orgCookie, clearOrgCookie, ORG_HELP } from '../../lib/organizer.js';
 
 const LIMITS = { name: 60, note: 200, itemName: 60, setting: 60, countMax: 99, maxItems: 40, maxEntriesPerItem: 60, batchRows: 15, batchOthers: 8 };
-const UNLOCK_TRIES = 10; // wrong + right class-code tries per visitor per 10 minutes
+const UNLOCK_TRIES = 10; // wrong + right class-code tries (and bad pass cookies) per visitor per 10 minutes
+const ORG_TRIES = 10;    // organizer password tries (and bad organizer cookies) per visitor per 10 minutes, a separate count
 const REMOVED_LIMIT = 500;
 const STATE_TTL_MS = 3000; // short per-isolate cache for GET /api/state
 
@@ -24,7 +26,11 @@ const SEC_HEADERS = {
   'X-Frame-Options': 'DENY',
 };
 
-const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...SEC_HEADERS, ...extra } });
+const json = (data, status = 200, extra = {}) => {
+  const h = new Headers(SEC_HEADERS);
+  for (const [k, v] of Object.entries(extra)) for (const x of [].concat(v)) h.append(k, x); // Set-Cookie may be a list
+  return new Response(JSON.stringify(data), { status, headers: h });
+};
 class HttpError extends Error { constructor(s, m, h) { super(m); this.status = s; this.headers = h || {}; } }
 
 // Strip control chars (keep normal spaces), collapse whitespace, trim.
@@ -39,8 +45,15 @@ function cleanText(v, max, field, { multiline = false } = {}) {
 const toInt = v => typeof v === 'string' && /^\d+$/.test(v.trim()) ? Number(v) : v;
 function cleanCount(v) {
   const n = toInt(v);
-  if (!Number.isInteger(n) || n < 0 || n > LIMITS.countMax) throw new HttpError(400, `How many needed must be a whole number from 0 to ${LIMITS.countMax}`);
+  // At least 1: an item with 0 spots could never be signed up for (to drop an item, remove it instead).
+  if (!Number.isInteger(n) || n < 1 || n > LIMITS.countMax) throw new HttpError(400, `How many needed must be a whole number from 1 to ${LIMITS.countMax}`);
   return n;
+}
+// Every sign-up shows a name on the list, so the name is required the same way on sign-up and on edit.
+function cleanName(v) {
+  const name = cleanText(v, LIMITS.name, 'Name');
+  if (!name) throw new HttpError(400, 'Please type your name.');
+  return name;
 }
 // Round 3: one sign-up = one person. 'qty' from clients is ignored; new rows store 1.
 // (The entries.qty column is kept so the change is reversible; older rows keep their value, unused.)
@@ -118,7 +131,7 @@ async function getState(env) {
     settings: { ...set, party_date: set.party_date || 'TBD', party_time: set.party_time || 'TBD' },
     items: [...byItem.values()], removed: removed.results, removed_items: removedItems.results, limits: LIMITS,
     calendar: !!parsePartyDate(set.party_date), // the page offers 'Add to calendar' only when the date can be read
-    code: gateActive(env), // true when a class code protects this page (the page shows "Class code on" to organizers)
+    code: gateStatus(env) === 'on', // true when a class code protects this page (the page shows "Class code on" to organizers)
   };
   memo = { at: Date.now(), data };
   return data;
@@ -157,7 +170,7 @@ const createdFor = async (env, req) => (await env.DB.prepare(
 async function batchSignup(env, request, body, who, req) {
   const rows = body.rows ?? [], others = body.others ?? [];
   if (!Array.isArray(rows) || !Array.isArray(others)) throw new HttpError(400, 'rows and others must be lists');
-  const name = cleanText(body.name, LIMITS.name, 'Name');
+  const name = cleanName(body.name);
   if (!rows.length && !others.length) throw new HttpError(400, 'Pick at least one item');
   if (rows.length + others.length > LIMITS.batchRows) throw new HttpError(400, `At most ${LIMITS.batchRows} items in one go`);
   if (others.length > LIMITS.batchOthers) throw new HttpError(400, `That’s more than ${LIMITS.batchOthers} new items. ${LIMITS.batchOthers} is the max for one sign-up. Nothing was saved.`);
@@ -312,17 +325,6 @@ async function exportBackup(env, format) {
   const body = '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   return new Response(body, { headers: { ...SEC_HEADERS, 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${base}.csv"` } });
 }
-// ---------- Organizer: "Copy this event" = a file in the same shape as site.config.json's event + items ----------
-// (no sign-ups, no names, no class code). Feed it to `node scripts/configure.mjs --from <file>` for a new sign-up page.
-async function eventCopy(env) {
-  const set = await readSettings(env);
-  const items = (await env.DB.prepare('SELECT name, needed FROM items WHERE deleted_at IS NULL ORDER BY sort, id').all()).results;
-  const { add_your_own, organizer_name, organizer_contact, ...event } = set;
-  const body = JSON.stringify({ format: 'signup-event-copy', version: 1, copied_at: new Date().toISOString(),
-    event, organizer: { name: organizer_name, contact: organizer_contact }, add_your_own, items: items.map(i => ({ name: i.name, spots: i.needed })) }, null, 2);
-  return new Response(body, { headers: { ...SEC_HEADERS, 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="${fileSlug(set.event_name)}-copy.json"` } });
-}
-
 // Slot check for Undo / Put back, run INSIDE the restore batch: if the item now has more live sign-ups than spots,
 // the guard insert fails (NOT NULL on items.name) and the whole restore rolls back -> 409 'just got covered'.
 const slotGuard = (env, itemId) => env.DB.prepare(`INSERT INTO items(name) SELECT NULL WHERE
@@ -351,19 +353,41 @@ function cleanSetting(key, v) {
 }
 
 // POST /api/unlock { code }: right code -> a pass cookie (HttpOnly, this site only); wrong code -> 403.
-// Tries are limited per visitor (UNLOCK_TRIES per 10 minutes) so the code can't be guessed by brute force.
+// Tries are limited per visitor (UNLOCK_TRIES per 10 minutes, shared with bad pass cookies, see gateCheck) so
+// neither the code nor the pass can be guessed by brute force.
+async function unlockTry(env, request, kind = 'u', max = UNLOCK_TRIES) { // one try on a visitor lockout counter ('u' class code, 'o' organizer); 429 when over
+  const who = await hashVisitor(visitorKey(request.headers.get('CF-Connecting-IP')), visitorSalt(env));
+  const c = rateCfg(env);
+  const n = (await env.DB.prepare('INSERT INTO rate(who, win, n) VALUES (?1, ?2, 1) ON CONFLICT(who, win) DO UPDATE SET n = n + 1 RETURNING n').bind(kind + ':' + who, c.win).first()).n;
+  if (n > max) throw new HttpError(429, 'Too many tries. Please wait about 10 minutes and try again.', { 'Retry-After': String(Math.ceil((c.win + 1) * c.winSec - c.t)) });
+}
 async function unlock(env, request, url) {
   const origin = request.headers.get('Origin');
   if (origin && origin !== url.origin) return json({ error: 'Forbidden' }, 403);
-  if (!gateActive(env)) return json({ ok: true, gate: false });
+  if (gateStatus(env) === 'off') return json({ ok: true, gate: false });
   const body = await readBody(request, 1024);
-  const who = await hashVisitor(visitorKey(request.headers.get('CF-Connecting-IP')), env.VISITOR_SALT);
-  const c = rateCfg(env);
-  const n = (await env.DB.prepare('INSERT INTO rate(who, win, n) VALUES (?1, ?2, 1) ON CONFLICT(who, win) DO UPDATE SET n = n + 1 RETURNING n').bind('u:' + who, c.win).first()).n;
-  if (n > UNLOCK_TRIES) throw new HttpError(429, 'Too many tries. Please wait about 10 minutes and try again.', { 'Retry-After': String(Math.ceil((c.win + 1) * c.winSec - c.t)) });
+  await unlockTry(env, request);
   if (typeof body.code !== 'string' || body.code.length > 64 || !(await codeMatches(env, body.code)))
     return json({ error: 'That code didn’t work. Check the email from the organizer and try again.' }, 403);
   return json({ ok: true }, 200, { 'Set-Cookie': passCookie(await gateToken(env), url.protocol === 'https:') });
+}
+// Fail closed: CLASS_CODE set but PASS_SECRET missing/too short -> every /api route answers 503 (no default secret).
+function setupError() {
+  console.error('Class code is on but PASS_SECRET is missing or too short. ' + SECRET_HELP);
+  return json({ error: 'This sign-up page isn’t finished being set up yet. Please tell the organizer.', setup: true }, 503);
+}
+
+function orgSetupError() {
+  console.error('Organizer routes are off: ' + ORG_HELP);
+  return json({ error: 'The organizer password isn’t set up yet (see the README, step 6).', setup: true, organizer: true }, 503);
+}
+// POST /api/organizer/login { password } -> organizer cookie (12 h); POST /api/organizer/logout clears it.
+async function orgLogin(env, request, url, body) {
+  if (orgStatus(env) !== 'on') return orgSetupError();
+  await unlockTry(env, request, 'o', ORG_TRIES);
+  if (!(await passwordMatches(env, body.password)))
+    return json({ error: 'That password didn’t work.', organizer: true }, 403);
+  return json({ ok: true, organizer: true }, 200, { 'Set-Cookie': orgCookie(await orgToken(env), url.protocol === 'https:') });
 }
 
 export async function onRequest({ request, env, params }) {
@@ -372,22 +396,42 @@ export async function onRequest({ request, env, params }) {
     const method = request.method;
     const url = new URL(request.url);
     // ---- class code (optional; on when the CLASS_CODE secret is set) ----
+    const gate = gateStatus(env);
+    if (gate === 'setup') return setupError();
     if (method === 'POST' && path === 'unlock') return await unlock(env, request, url);
-    if (gateActive(env) && !(await hasPass(env, request))) {
-      if (method === 'GET' && path === 'state') {
-        const set = await readSettings(env); // only the event name is shown before the code is entered
-        return json({ error: 'Please enter the class code from the email.', gate: true, event_name: set.event_name }, 401);
+    if (gate === 'on') {
+      const pass = await passState(env, request);
+      if (pass !== 'ok') {
+        const hdr = {};
+        if (pass === 'bad') { // forged/old cookie: costs one try on the same lockout as a wrong code, then is cleared
+          await unlockTry(env, request);
+          hdr['Set-Cookie'] = clearPassCookie(url.protocol === 'https:');
+        }
+        const msg = { error: 'Please enter the class code from the email.', gate: true };
+        if (method === 'GET' && path === 'state') msg.event_name = (await readSettings(env)).event_name; // only the event name before the code
+        return json(msg, 401, hdr);
       }
-      return json({ error: 'Please enter the class code from the email.', gate: true }, 401);
     }
+    // ---- organizer password (organizer-only routes; see lib/organizer.js) ----
+    const secure = url.protocol === 'https:';
+    const org = await orgState(env, request), orgHdr = {};
+    if (org === 'bad') { // forged / expired / old organizer cookie: one try on the organizer lockout, then cleared
+      orgHdr['Set-Cookie'] = clearOrgCookie(secure);
+      try { await unlockTry(env, request, 'o', ORG_TRIES); } catch (e) { if (e instanceof HttpError) e.headers = { ...e.headers, ...orgHdr }; throw e; }
+    }
+    const isOrg = org === 'ok';
+    if (isOrgRoute(method, path) && !isOrg) {
+      if (orgStatus(env) !== 'on') return orgSetupError();
+      return json({ error: 'Only the organizer can do that. Please enter the organizer password.', organizer: true }, 401, orgHdr);
+    }
+    const withOrg = d => ({ ...d, organizer: isOrg });
     if (method === 'GET' && path === 'state') {
-      if (memo && Date.now() - memo.at < STATE_TTL_MS) return json(memo.data);
-      return json(await getState(env));
+      if (memo && Date.now() - memo.at < STATE_TTL_MS) return json(withOrg(memo.data), 200, orgHdr);
+      return json(withOrg(await getState(env)), 200, orgHdr);
     }
     if (method === 'GET' && path === 'calendar.ics') return await calendar(env, url);
     if (method === 'GET' && path === 'export.csv') return await exportBackup(env, 'csv');
     if (method === 'GET' && path === 'export.json') return await exportBackup(env, 'json');
-    if (method === 'GET' && path === 'event-copy.json') return await eventCopy(env);
     if (method === 'GET' || method === 'HEAD') return json({ error: 'Not found' }, 404);
 
     // Same-origin only for writes (blocks cross-site form/fetch abuse).
@@ -395,12 +439,14 @@ export async function onRequest({ request, env, params }) {
     if (origin && origin !== new URL(request.url).origin) return json({ error: 'Forbidden' }, 403);
 
     const body = await readBody(request, method === 'POST' && path === 'batch' ? 16384 : 4096);
-    const who = await hashVisitor(visitorKey(request.headers.get('CF-Connecting-IP')), env.VISITOR_SALT);
+    if (method === 'POST' && path === 'organizer/login') return await orgLogin(env, request, url, body);
+    if (method === 'POST' && path === 'organizer/logout') return json({ ok: true, organizer: false }, 200, { 'Set-Cookie': clearOrgCookie(secure) });
+    const who = await hashVisitor(visitorKey(request.headers.get('CF-Connecting-IP')), visitorSalt(env));
 
     // Idempotent retries: a write with a request id we've already applied is not applied again.
     let req = request.headers.get('X-Req-Id');
     if (req !== null && !/^[A-Za-z0-9-]{8,64}$/.test(req)) req = null;
-    if (req && await row(env, 'SELECT 1 AS x FROM history WHERE req = ?1', req)) return json({ ...(await getState(env)), created: await createdFor(env, req), replayed: true });
+    if (req && await row(env, 'SELECT 1 AS x FROM history WHERE req = ?1', req)) return json(withOrg({ ...(await getState(env)), created: await createdFor(env, req), replayed: true }), 200, orgHdr);
 
     const isBatch = method === 'POST' && path === 'batch';
     const rc = await rateLimit(env, who, isBatch ? 0 : 1);
@@ -427,7 +473,7 @@ export async function onRequest({ request, env, params }) {
     // --- entries ---
     else if (method === 'POST' && path === 'entries') {
       const itemId = cleanId(body.item_id);
-      const name = cleanText(body.name, LIMITS.name, 'Name');
+      const name = cleanName(body.name);
       const note = cleanText(body.note, LIMITS.note, 'Note', { multiline: true });
       const qty = cleanQty(body.qty);
       if (!(await liveItem(env, itemId))) throw new HttpError(404, 'That item no longer exists');
@@ -441,7 +487,7 @@ export async function onRequest({ request, env, params }) {
     }
     else if ((m = path.match(/^entries\/(\d+)$/)) && method === 'PUT') {
       const id = cleanId(m[1]);
-      const name = cleanText(body.name, LIMITS.name, 'Name');
+      const name = cleanName(body.name);
       const note = cleanText(body.note, LIMITS.note, 'Note', { multiline: true });
       const before = await row(env, 'SELECT * FROM entries WHERE id = ?1 AND deleted_at IS NULL', id);
       if (!before) throw new HttpError(404, 'That sign-up no longer exists');
@@ -497,8 +543,7 @@ export async function onRequest({ request, env, params }) {
             WHERE id IN (SELECT value FROM json_each(?1))`).bind(JSON.stringify(list)),
           log('update', 'items', id, { id, sort: before.sort, order: list.slice().sort() }, { id, move: body.move, order: list }),
         ]);
-        const data = await getState(env);
-        return json(data);
+        return json(withOrg(await getState(env)), 200, orgHdr);
       }
       const needed = body.needed === undefined ? before.needed : cleanCount(body.needed);
       let name = before.name;
@@ -541,8 +586,8 @@ export async function onRequest({ request, env, params }) {
     }
     else return json({ error: 'Not found' }, 404);
 
-    const data = await getState(env);
-    return json(created ? { ...data, created } : data);
+    const data = withOrg(await getState(env));
+    return json(created ? { ...data, created } : data, 200, orgHdr);
   } catch (e) {
     if (e instanceof HttpError) return json(e.rows ? { error: e.message, rows: e.rows } : { error: e.message }, e.status, e.headers);
     console.error('api error', e && e.stack || e);

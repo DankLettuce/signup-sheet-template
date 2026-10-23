@@ -1,12 +1,20 @@
 // Tests the recovery tools against the LOCAL dev server + local D1:
 // revert-visitor.mjs, snapshot.mjs (take/restore/undo) and the worker-backup cron.
-// Usage: [CLASS_CODE=<same code as the server>] node scripts/test-admin.mjs [http://127.0.0.1:8788]   (run from the repo; dev server must be up)
+// Usage: ORGANIZER_PASSWORD=<same as the server> PASS_SECRET=<same> [CLASS_CODE=<same>] node scripts/test-admin.mjs [http://127.0.0.1:8788]
+//   (run from the repo; dev server must be up). revert-visitor --ip hashes addresses with the site's salt (VISITOR_SALT,
+//   else PASS_SECRET), so this needs the same PASS_SECRET (or VISITOR_SALT) as the server in the environment.
 import { execFileSync, spawn } from 'node:child_process';
 import { q, ROOT } from './_d1.mjs';
 const BASE = process.argv.find(a => a.startsWith('http')) || 'http://127.0.0.1:8788';
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : fail++; console.log(`${c ? 'PASS' : 'FAIL'}  ${n}`); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// The local server drops keep-alive sockets that sat idle (e.g. while an admin script ran). A request that hits such a
+// socket never reached the server, so GETs are simply retried once.
+const fetch = async (url, o = {}) => {
+  try { return await globalThis.fetch(url, o); }
+  catch (e) { if ((o.method || 'GET') === 'GET' && e?.cause?.code === 'UND_ERR_SOCKET') return globalThis.fetch(url, o); throw e; }
+};
 let COOKIE = ''; // class code pass (only when the server has a code)
 const rnd = () => `10.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}`;
 async function call(ip, method, path, body) {
@@ -21,6 +29,15 @@ if ((await fetch(BASE + '/api/state')).status === 401) {
   const u = await fetch(BASE + '/api/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': rnd() }, body: JSON.stringify({ code: process.env.CLASS_CODE || '' }) });
   if (!u.ok) { console.log('The server has a class code: run with CLASS_CODE=<code>'); process.exit(1); }
   COOKIE = (u.headers.get('set-cookie') || '').split(';')[0];
+  if (!process.env.PASS_SECRET && !process.env.VISITOR_SALT) { console.log('Run with the same PASS_SECRET (or VISITOR_SALT) as the server: revert-visitor --ip needs the salt.'); process.exit(1); }
+}
+// The vandal steps below change items and event details, which needs the organizer password (a leaked password is
+// exactly what the recovery tools are for).
+if (!process.env.ORGANIZER_PASSWORD) { console.log('Run with the same ORGANIZER_PASSWORD as the server.'); process.exit(1); }
+{
+  const o = await fetch(BASE + '/api/organizer/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': rnd(), ...(COOKIE ? { Cookie: COOKIE } : {}) }, body: JSON.stringify({ password: process.env.ORGANIZER_PASSWORD }) });
+  if (!o.ok) { console.log('Organizer login failed (' + o.status + '): is ORGANIZER_PASSWORD the same as the server\'s?'); process.exit(1); }
+  COOKIE = [COOKIE, (o.headers.get('set-cookie') || '').split(';')[0]].filter(Boolean).join('; ');
 }
 // Admin scripts write D1 directly; GET /api/state has a 3 s per-isolate cache, so wait it out.
 const node = (...a) => { const o = execFileSync(process.execPath, a, { cwd: ROOT, encoding: 'utf8' }); execFileSync('sleep', ['3.2']); return o; };
@@ -51,7 +68,7 @@ await call(V(1), 'PUT', `entries/${real[0].id}`, { name: 'VANDAL', note: 'x' });
 await call(V(2), 'PUT', `entries/${real[1].id}`, { name: 'VANDAL', note: 'x' });
 await call(V(3), 'DELETE', `entries/${real[2].id}`);
 await call(V(4), 'PUT', 'settings', { key: 'party_date', value: 'CANCELLED' });
-await call(V(5), 'PUT', `items/${B.id}`, { needed: 0 });
+await call(V(5), 'PUT', `items/${B.id}`, { needed: 1 }); // 0 is refused since QA round 1; 1 is the lowest a vandal can set
 let r = await call(V(6), 'POST', 'items', { name: 'Vandal item', needed: 9 });
 const vi = r.data.items.find(i => i.name === 'Vandal item');
 await call(V(7), 'POST', 'entries', { item_id: vi.id, name: 'VANDAL entry' });
