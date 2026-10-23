@@ -40,7 +40,11 @@ try {
     await p.waitForFunction(() => document.querySelector('#gate-msg').textContent.length > 0, { timeout: 5000 });
     ok(/didn’t work/.test(await txt('#gate-msg')) && await vis('#gate'), 'wrong code: refused with a message, still on the code screen');
     await shot('2-gate-wrong');
-    await p.click('#gate-code', { clickCount: 3 }); await p.type('#gate-code', CODE.toLowerCase());
+    // Clear the box for real (a triple-click can leave the wrong code in place), then type the right code.
+    await p.$eval('#gate-code', n => { n.focus(); n.value = ''; n.dispatchEvent(new Event('input', { bubbles: true })); });
+    await p.type('#gate-code', CODE.toLowerCase());
+    ok(await p.$eval('#gate-code', n => n.value) === CODE.toLowerCase(), 'code box holds only the right code before submitting (wrong code cleared)');
+    await shot('2b-gate-right');
     await p.click('#gate-go');
     await p.waitForSelector('#gate[hidden]', { timeout: 5000 });
     ok(true, 'right code (typed in lower case): the sign-up opens');
