@@ -1,0 +1,22 @@
+{
+  "name": "class-signup-template",
+  "version": "1.0.0",
+  "description": "Class sign-up page template (Cloudflare Pages + D1): event, items, theme and organizer details come from site.config.json.",
+  "scripts": {
+    "configure": "node scripts/configure.mjs",
+    "dev": "scripts/dev.sh",
+    "test": "node scripts/test.mjs && node scripts/test-admin.mjs",
+    "test:ui": "node scripts/ui-check.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "wrangler": "^4.151.3"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}

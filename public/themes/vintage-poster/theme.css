@@ -1,0 +1,152 @@
+/* THEME: "vintage-poster" (design/directions option 2). Tokens in tokens.css; this file has
+   fonts, extra tokens, art, and the component overrides that give the print-shop look.
+   Paths are relative to this file. Banner art (option-2-v3: pumpkin + kids in one picture) is the
+   <img class="banner banner-still"> at the top of index.html (art/banner-v3@2x.png), with the generated loop
+   video/banner-loop-dark-780.mp4/.webm (780x320 = 39:16, same box) playing over it; swap = change those file names there. The ink band, grain and scalloped edge come from .top below. */
+
+@font-face { font-family: "Ultra"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ultra-latin.woff2") format("woff2"); }
+@font-face { font-family: "Bitter"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("fonts/bitter-latin.woff2") format("woff2"); }
+@font-face { font-family: "Bitter"; font-style: italic; font-weight: 400 800; font-display: swap; src: url("fonts/bitter-italic-latin.woff2") format("woff2"); }
+
+:root {
+  --c-bar-track:     rgba(239, 223, 191, .22);
+  --bar-fill:        repeating-linear-gradient(90deg, var(--v-mustard) 0 14px, var(--v-orange) 14px 28px);
+  --c-card-full-bg:  var(--v-paper-2);
+  --c-slot-border:   var(--v-brown);
+  --c-grab:          var(--v-brown);
+  --c-add-text:      var(--v-ink);
+  --c-add-sub:       var(--v-brown);
+  --c-on-accent:     var(--v-paper);
+  --c-scrim:         rgba(30, 26, 22, .6);
+  --c-placeholder:   #75644F;
+  --focus-ring:      0 0 0 4px rgba(168, 64, 26, .25);
+  --sh-sheet-actions: 0 -3px 0 var(--v-ink);
+  --c-when-border:   transparent;
+  --c-summary-border: var(--v-ink);
+  --hero-h:          230px;   /* phone: banner is drawn 390x230 and covers */
+  --hero-h-wide:     320px;
+  --hero-pos:        50% 0;
+  --hero-pos-wide:   50% 0;
+  --overlap:         212px;   /* how far the title block rides up over the banner */
+  --overlap-wide:    252px;
+  --grain:           url("art/grain.svg");
+  font-synthesis: none;       /* Ultra has one weight: never fake-bold it */
+}
+
+/* ---- paper ---- */
+html { overflow-x: clip; }
+html, body { background: var(--v-paper) var(--grain); }
+
+/* ---- banner: ink band from the top of the page, v3 art edge to edge, scalloped edge ---- */
+.hero { display: none; }
+.top { position: relative; z-index: 1; padding-bottom: 30px; color: var(--v-paper); }
+.top::before { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%);
+  background: var(--v-ink) var(--grain); }
+.top::after { content: ""; position: absolute; z-index: -1; bottom: -1px; left: 50%; width: 100vw; height: 15px; transform: translateX(-50%);
+  background: radial-gradient(circle at 50% 100%, var(--v-paper) 13.5px, transparent 14px) 50% 0 / 28px 15px repeat-x; }
+.banner-wrap { width: calc(100% + 2 * var(--page-pad)); margin: 0 calc(-1 * var(--page-pad)); }
+.banner, .banner-video { aspect-ratio: 390 / 160; }
+
+.titlecard { display: block; text-align: left; margin: 0; padding: 0; }
+/* the school tag sits in the banner's clear top-left corner (x 0-190, y 0-48 at 390 wide) */
+.school { position: absolute; top: 12px; left: calc(16px - var(--page-pad)); z-index: 1; display: inline-block; margin: 0; padding: 7px 10px;
+  background: var(--v-mustard); color: var(--v-ink); font: 800 16px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; transform: rotate(-2deg); }
+h1 { font: italic 600 22px/1.2 var(--font-body); color: var(--v-paper); margin: 4px 0 0; letter-spacing: 0; }
+h1 .accent { display: block; margin-top: 4px; font: 400 clamp(36px, 11.6vw, 46px)/.98 var(--font-display); text-transform: uppercase; color: var(--v-orange);
+  text-shadow: 3px 3px 0 var(--v-rust); letter-spacing: .01em; }
+.intro { margin: 14px 0 0; text-align: left; font-style: italic; color: var(--v-paper); }
+.top-side { margin-top: 18px; }
+
+/* date ticket */
+.when { background: var(--v-paper); color: var(--v-ink); border: 0; border-radius: 0; box-shadow: none; outline: 2px dashed var(--v-ink); outline-offset: -7px; padding: 14px 14px 14px 18px; }
+.when-ico { display: none; }
+.when .t b { font: 800 18px/1.25 var(--font-body); text-transform: uppercase; letter-spacing: .02em; }
+.when .t span { font: italic 600 17px/1.4 var(--font-body); color: var(--v-rust); }
+.iconbtn { width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--v-ink); color: var(--v-paper); }
+.overall { color: var(--v-paper); margin: 12px 0 0; }
+.bar { height: 12px; }
+
+/* ---- 'Already signed up' as a printed programme ---- */
+.summary { margin: 26px 0 var(--s-4); padding: 16px 18px; border: 3px solid var(--v-ink); background: var(--v-paper-2); }
+.summary h2 { justify-content: center; font: 400 20px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em;
+  border-bottom: 3px double var(--v-ink); padding-bottom: 8px; margin: 0 0 4px; }
+.summary-ico { display: none; }
+.summary ul { gap: 0; }
+.summary li { padding: 8px 0; border-bottom: 1px dotted var(--v-brown); font-size: 16px; }
+.summary li:last-child { border-bottom: 0; }
+.sum-count { color: var(--v-rust); font-weight: 600; }
+.sum-count.full { color: var(--v-ink); background: var(--v-mustard); padding: 0 5px; }
+.editnote { color: var(--v-brown); font-style: italic; }
+
+/* ---- one-tap cards, covered lines, 'Add your own', organizer ---- */
+.mine { justify-content: center; text-align: center; padding: 10px 12px; border: 3px solid var(--v-ink); background: var(--v-paper-2); }
+.org-bar { border: 2px dashed var(--v-rust); color: var(--v-ink); background: var(--v-paper-2); }
+.tog-name { font-weight: 400; text-transform: uppercase; }
+.tog-state { color: var(--v-rust); font-style: italic; }
+.tick { border: 3px solid var(--v-ink); border-radius: 0; background: var(--v-paper); }
+.card.on .tick { background: var(--v-ink); border-color: var(--v-ink); }
+.card.on .tick::after { color: var(--v-mustard); }
+.card.on { outline: 4px solid var(--v-mustard); outline-offset: 2px; }
+.card.on .tog-state { color: var(--v-ink); font-style: normal; }
+.card.covered { border-width: 2px; border-style: dashed; background: var(--v-paper-2); }
+.cov-name { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; }
+.cov-state { color: var(--v-rust); font-style: italic; }
+.pill.is-mine { box-shadow: inset 0 0 0 2px var(--v-rust); }
+.own { border-style: dashed; }
+.own-label { font-weight: 400; text-transform: uppercase; }
+.own.on { outline: 4px solid var(--v-mustard); outline-offset: 2px; }
+.multibar { border-top: 3px solid var(--v-ink); box-shadow: 0 -4px 0 var(--v-rust); }
+.org-link { color: var(--v-brown); }
+.thanks-text { font-style: italic; }
+
+/* ---- item cards ---- */
+.list { gap: 22px; padding-right: 6px; }
+.card { border: 3px solid var(--v-ink); }
+.card.full { outline: 0; }
+.ico, .sh-head .ico { display: none; }
+.name h2, .sh-head h2 { font-weight: 400; text-transform: uppercase; }
+.chip { height: auto; padding: 7px 9px; border: 2px solid var(--v-ink); transform: rotate(-3deg); font: 800 16px/1 var(--font-body); }
+.chip.part { border-color: var(--v-rust); }
+.pill { background: var(--v-paper); border: 1.5px solid var(--v-brown); }
+.pill-name::after { color: var(--v-rust); }
+.empty { font-style: italic; }
+.btn { font-weight: 400; text-transform: uppercase; letter-spacing: .06em; font-size: 20px; }
+.btn-primary:active { transform: translate(1px, 1px); }
+.btn-secondary, .btn-danger { border-width: 3px; }
+.btn-text, .card.full .btn-text { font-family: var(--font-body); font-weight: 700; text-transform: none; letter-spacing: 0; font-size: var(--fs-small); }
+.fullnote { color: var(--v-ink); }
+.fullnote-ico { background-image: url("art/star.svg"); width: 24px; height: 24px; }
+
+.add { border: 3px dashed var(--v-ink); font-weight: 400; text-transform: uppercase; font-size: 19px; letter-spacing: .02em; }
+.add small { text-transform: none; letter-spacing: 0; font-weight: 600; font-style: italic; }
+.add .plus { font-family: var(--font-display); font-weight: 400; }
+.removed { border: 3px solid var(--v-ink); }
+.removed summary { font-weight: 400; text-transform: uppercase; font-size: 18px; }
+
+.foot { color: var(--v-brown); font-style: italic; }
+.deco-a, .deco-d { background-image: url("art/star.svg"); width: 22px; height: 22px; }
+.deco-b { background-image: url("art/pumpkin.svg"); width: 44px; height: 44px; }
+.deco-c { background-image: url("art/bat.svg"); width: 56px; height: 18px; }
+
+/* ---- sheet, toast, form ---- */
+.sheet { border-top: 3px solid var(--v-ink); }
+.peek { background-image: url("art/pumpkin.svg"); width: 60px; height: 60px; top: -48px; }
+.close { border-radius: 50%; background: var(--v-paper); border: 2px solid var(--v-ink); }
+.stepper button { background: var(--v-paper); color: var(--v-ink); }
+.stepper input { font-weight: 400; }
+label.f { font-weight: 800; }
+.toast { background: var(--v-ink); color: var(--v-paper); border: 2px solid var(--v-paper); }
+
+@media (min-width: 760px) {
+  .top { margin-top: 0; grid-template-columns: minmax(0, 1fr) 380px; align-items: end; padding-bottom: 30px; }
+  .banner-wrap { grid-column: 1 / -1; width: min(600px, 100%); margin: 0 auto; }
+  .school { left: 0; }
+  h1 { font-size: 26px; }
+  h1 .accent { font-size: 54px; }
+  .top-side { margin-top: 0; }
+  .overall { margin: 16px 0 0; }
+  .summary { margin: 30px 0 0; }
+  .mine, .org-bar { margin: 26px 0 0; }
+  .multibar { border: 3px solid var(--v-ink); box-shadow: 6px 6px 0 var(--v-rust); }
+  .list { gap: 26px; }
+}

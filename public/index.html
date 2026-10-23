@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>Sign-Up</title>
+  <!-- THEME: set "site.theme" in site.config.json and run `node scripts/configure.mjs`; it points every
+       /themes/<name>/ path below at that folder (theme.css loads last so it can override components).
+       Also set theme-color to the new header colour (see README "Themes"). -->
+  <meta name="theme-color" content="#1E1A16">
+  <link rel="icon" href="/themes/vintage-poster/art/pumpkin.svg" type="image/svg+xml">
+  <link rel="preload" href="/themes/vintage-poster/fonts/ultra-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/themes/vintage-poster/fonts/bitter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/themes/vintage-poster/tokens.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/themes/vintage-poster/theme.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <!-- class code (only when the site has one): shown instead of the list until the right code is entered -->
+  <section id="gate" class="gate" aria-labelledby="gate-title" hidden>
+    <form id="gate-form" class="card gate-card" autocomplete="off" novalidate>
+      <h1 id="gate-title"><span id="gate-event">Sign-Up</span></h1>
+      <label class="f" for="gate-code">Class code</label>
+      <p class="help" id="gate-help">It’s in the email with this link.</p>
+      <input class="input" id="gate-code" name="classcode" type="text" maxlength="64" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="gate-help gate-msg">
+      <p class="row-msg" id="gate-msg" role="alert"></p>
+      <button type="submit" class="btn btn-primary" id="gate-go">Open the sign-up</button>
+    </form>
+  </section>
+
+  <main class="wrap" id="main">
+    <header class="top">
+      <!-- BANNER (theme art, design/directions/option-2-v3-art + generated loop): swap = change these file names.
+           The still is the box and the fallback (reduced motion, Save-Data, no JS, video error/blocked autoplay).
+           The video is decorative and sits on top of it; app.js fills in the source URLs (data-src) only when motion is OK. -->
+      <div class="banner-wrap">
+        <img class="banner banner-still" src="/themes/vintage-poster/art/banner-v3@2x.png" width="390" height="160"
+             alt="A big smiling pumpkin with four kids in costumes: a sheet ghost, a skeleton suit, a witch and a pumpkin suit, holding candy pails">
+        <video class="banner-video" muted autoplay loop playsinline preload="metadata" poster="/themes/vintage-poster/art/banner-v3@2x.png"
+               width="390" height="160" aria-hidden="true" tabindex="-1" disablepictureinpicture disableremoteplayback>
+          <source data-src="/themes/vintage-poster/video/banner-loop-dark-780.mp4" type="video/mp4">
+          <source data-src="/themes/vintage-poster/video/banner-loop-dark-780.webm" type="video/webm">
+        </video>
+      </div>
+      <!-- filled in from the event details (Organizer mode -> Event details) -->
+      <div class="titlecard">
+        <h1><span id="ev-who"></span> <span class="accent" id="ev-name">Sign-Up</span></h1>
+        <p class="school" id="ev-school"></p>
+      </div>
+      <div class="top-side">
+        <div class="when">
+          <span class="when-ico" aria-hidden="true"></span>
+          <div class="t">
+            <b id="party-date"></b>
+            <span id="party-time"></span>
+          </div>
+          <button type="button" class="iconbtn" id="edit-when" aria-label="Edit event details" hidden>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+          </button>
+        </div>
+        <p class="intro" id="ev-intro"></p>
+        <div class="overall"><span id="overall-text">Loading…</span><div class="bar" aria-hidden="true"><i id="overall-bar"></i></div></div>
+      </div>
+    </header>
+
+    <p id="mine" class="mine" hidden><span id="mine-text"></span> <button type="button" class="mini-link" id="mine-edit">Edit</button></p>
+
+    <!-- Organizer page (this phone only; turned on with the "Organizer" link at the bottom) -->
+    <section id="org-bar" class="org-bar" aria-labelledby="org-title" hidden>
+      <h2 id="org-title" class="org-title">Organizer</h2>
+      <p class="org-help">Change the event details and items here. Under each item: Spots, Rename, Remove, and ↑ ↓ to move it. <span id="org-code-state"></span></p>
+      <div class="org-actions">
+        <button type="button" class="btn btn-secondary small" id="org-details">Event details</button>
+        <button type="button" class="btn btn-secondary small" id="org-add">Add an item</button>
+        <a class="btn btn-secondary small" id="org-backup" href="/api/export.csv" download>Back up the list</a>
+        <a class="btn btn-secondary small" id="org-copy" href="/api/event-copy.json" download>Copy this event</a>
+      </div>
+      <p class="org-help small">“Back up the list” saves a spreadsheet file (who’s bringing what). <a id="org-backup-json" href="/api/export.json" download>Full backup file</a> keeps everything, even removed sign-ups. “Copy this event” saves the details and items (no names) to start a new sign-up page.</p>
+      <p><button type="button" class="mini-link" id="org-off">Turn off Organizer mode</button></p>
+    </section>
+
+    <section id="summary" class="summary" aria-labelledby="summary-title" hidden>
+      <h2 id="summary-title"><span class="summary-ico" aria-hidden="true"></span>Already signed up</h2>
+      <ul id="summary-list"></ul>
+    </section>
+
+    <p class="editnote">Tap everything you can bring, then “Sign me up”. Anyone with this link can change sign-ups: tap a name to edit or remove it.</p>
+    <!-- "Add your own": app.js moves it below the list (default, setting add_your_own = bottom) or keeps it here (top) -->
+    <div class="card own" id="own">
+      <label class="own-label" for="own-item-1"><span class="own-plus" aria-hidden="true">+</span> Add your own</label>
+      <!-- app.js keeps one blank box at the end: typing in it adds another below (max 8 new items per sign-up) -->
+      <div class="own-rows" id="own-rows"></div>
+      <p class="own-state" id="own-state" aria-live="polite"></p>
+    </div>
+
+    <div class="list" id="list" aria-live="polite"></div>
+
+    <details id="removed" class="card removed" hidden>
+      <summary>Recently removed<span id="removed-count"></span></summary>
+      <p class="help">Removed something by mistake? Put it back here.</p>
+      <ul id="removed-list"></ul>
+    </details>
+
+    <div class="foot">
+      <div class="deco" aria-hidden="true">
+        <span class="deco-a"></span><span class="deco-b"></span><span class="deco-c"></span><span class="deco-d"></span>
+      </div>
+      <span id="ev-thanks">Thank you for helping!</span>
+      <p id="ev-contact" class="contact" hidden></p>
+      <p><button type="button" class="org-link" id="org-toggle" aria-pressed="false">Organizer</button></p>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="multibar" id="multibar" hidden>
+    <button type="button" class="btn btn-primary" id="multi-go">Sign me up</button>
+    <button type="button" class="btn-text small" id="multi-clear">Clear</button>
+  </div>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <span class="peek" aria-hidden="true"></span>
+    <div class="sheet-top">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="sh-head">
+        <span class="ico" id="sheet-ico" aria-hidden="true"></span>
+        <h2 id="sheet-title"></h2>
+        <button type="button" class="close" id="sheet-close" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <!-- the form is a column: .sheet-scroll (fields, scrolls inside the sheet's max-height) + .sheet-actions (always visible) -->
+    <form id="sheet-form" class="sheet-form" autocomplete="off" novalidate></form>
+  </div>
+</body>
+</html>

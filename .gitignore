@@ -1,0 +1,13 @@
+node_modules/
+.wrangler/
+.dev.vars
+*.env
+backups/
+
+# generated banner loop sources (only the 780 files are shipped, in public/themes/vintage-poster/video/)
+/video/
+# feedback screenshots from phones (personal; not part of the build)
+/feedback/
+
+# internal build note (who approved what); kept next to the repo, not in it
+PLAN-approved.md

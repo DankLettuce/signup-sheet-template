@@ -1,0 +1,74 @@
+/* Halloween Party Sign-up — design tokens
+   Fonts: <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+   All text/background pairs below pass WCAG AA (4.5:1) — ratios in STYLE.md. */
+:root {
+  /* Surfaces */
+  --c-bg:            #FFF6EA; /* page: warm cream */
+  --c-surface:       #FFFFFF; /* cards, sheet */
+  --c-surface-soft:  #FFF1DC; /* sub-panels, signed-up pills */
+  --c-night:         #3E2770; /* header sky / dark band */
+
+  /* Text */
+  --c-text:          #2B1B3D; /* main text, headings (plum) */
+  --c-text-muted:    #5E4B6E; /* secondary text, labels */
+  --c-text-on-dark:  #FFF6EA; /* text on --c-night or --c-purple */
+  --c-link:          #5B3A8C; /* links, edit pencil, secondary btn */
+
+  /* Primary (pumpkin) */
+  --c-primary:       #C2410C; /* Sign up / Confirm bg, white text 5.18:1 */
+  --c-primary-press: #9A3412; /* hover/pressed, white text 7.31:1 */
+  --c-on-primary:    #FFFFFF;
+
+  /* Accents (decorative only — never body text on these unless listed) */
+  --c-orange:        #FF8A1F; /* candy-corn orange */
+  --c-yellow:        #FFC93C; /* candy-corn yellow */
+  --c-corn-white:    #FFF8EC; /* candy-corn tip */
+  --c-purple:        #5B3A8C; /* bat purple */
+  --c-lilac:         #F6F0FF; /* add-Other row bg */
+  --c-lilac-line:    #8E5BD0; /* add-Other dashed border, focus ring */
+  --c-green:         #3F8F4F; /* vine green (art) */
+
+  /* Count chips */
+  --chip-open-bg:    #FFF1C4; --chip-open-fg:    #7A4A00; /* "0 of 2 · Open"  6.64:1 */
+  --chip-part-bg:    #FFE3CC; --chip-part-fg:    #9A3412; /* "2 of 6 filled"  5.95:1 */
+  --chip-full-bg:    #DDF3E4; --chip-full-fg:    #1E6B3D; /* "Full!"          5.58:1 */
+
+  /* Form */
+  --c-input-bg:      #FFFFFF;
+  --c-input-border:  #8C7A9E; /* 3.89:1 vs white (non-text, needs 3:1) */
+  --c-focus:         #8E5BD0;
+  --c-error:         #B42318; /* 6.57:1 on white */
+
+  /* Type */
+  --font-display: "Fredoka", "Baloo 2", system-ui, sans-serif;
+  --font-body:    "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-title: 30px;   /* page title (phone); 44px desktop */
+  --fs-h2:    22px;   /* item names */
+  --fs-body:  17px;   /* body; never below 16px */
+  --fs-small: 16px;   /* chips, helper text */
+  --lh-tight: 1.15;
+  --lh-body:  1.45;
+
+  /* Spacing (4px base) */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --page-pad: 16px;   /* phone side padding; 24px+ on desktop */
+
+  /* Radius */
+  --r-sm: 10px;   /* inputs, small pills */
+  --r-md: 16px;   /* buttons */
+  --r-lg: 22px;   /* cards */
+  --r-xl: 28px;   /* bottom sheet top corners */
+  --r-pill: 999px;
+
+  /* Size */
+  --tap: 48px;        /* min tap target (>=44) */
+  --btn-h: 52px;      /* primary button height */
+
+  /* Shadow (soft, warm) */
+  --sh-card:  0 2px 0 rgba(43,27,61,.06), 0 6px 18px rgba(122,74,0,.08);
+  --sh-btn:   0 3px 0 #9A3412;          /* chunky "candy" bottom edge */
+  --sh-sheet: 0 -8px 30px rgba(43,27,61,.25);
+}

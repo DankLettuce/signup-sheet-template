@@ -1,0 +1,78 @@
+/* Vintage poster (design/directions option 2) — design tokens.
+   Palette and fonts from option-2-STYLE.md; mapped onto the token names styles.css uses.
+   Contrast (STYLE.md): ink on paper/card 13.16/14.85, rust on card/paper 5.29/4.68,
+   ink on mustard 7.98, brown on paper/card 6.45/7.29, paper on ink 13.16, orange on ink 6.92. */
+:root {
+  /* Palette (three inks on aged paper) */
+  --v-paper:   #EFDFBF;  /* page */
+  --v-paper-2: #F7EDD6;  /* cards, panels, sheet */
+  --v-ink:     #1E1A16;  /* text, hero band, buttons */
+  --v-rust:    #A8401A;  /* counts, time, misprint shadow, links */
+  --v-orange:  #F08A3C;  /* title on ink */
+  --v-mustard: #E9A23B;  /* label tag, Full */
+  --v-brown:   #5A4A3A;  /* muted text */
+
+  /* Surfaces */
+  --c-bg:            var(--v-paper);
+  --c-surface:       var(--v-paper-2);
+  --c-surface-soft:  var(--v-paper);
+  --c-night:         var(--v-ink);
+
+  /* Text */
+  --c-text:          var(--v-ink);
+  --c-text-muted:    var(--v-brown);
+  --c-text-on-dark:  var(--v-paper);
+  --c-link:          var(--v-rust);
+
+  /* Primary */
+  --c-primary:       var(--v-ink);
+  --c-primary-press: #000000;
+  --c-on-primary:    var(--v-paper);
+
+  /* Accents */
+  --c-orange:        var(--v-orange);
+  --c-yellow:        var(--v-mustard);
+  --c-corn-white:    var(--v-paper-2);
+  --c-purple:        var(--v-ink);
+  --c-lilac:         var(--v-paper-2);
+  --c-lilac-line:    var(--v-ink);
+  --c-green:         var(--v-rust);
+
+  /* Count chips (rubber stamps) */
+  --chip-open-bg:    var(--v-paper-2); --chip-open-fg: var(--v-ink);   /* 14.85:1 */
+  --chip-part-bg:    var(--v-paper-2); --chip-part-fg: var(--v-rust);  /* 5.29:1 */
+  --chip-full-bg:    var(--v-mustard); --chip-full-fg: var(--v-ink);   /* 7.98:1 */
+
+  /* Form */
+  --c-input-bg:      #FBF6EA;
+  --c-input-border:  var(--v-brown);  /* 7+:1, non-text needs 3:1 */
+  --c-focus:         var(--v-rust);
+  --c-error:         #9B1C1C;         /* ~7:1 on card paper */
+
+  /* Type */
+  --font-display: "Ultra", "Rockwell Extra Bold", Georgia, serif;   /* always uppercase, weight 400 only */
+  --font-body:    "Bitter", Georgia, serif;
+  --fs-title: 22px;   /* teacher + class line; the poster line is sized in theme.css */
+  --fs-h2:    22px;
+  --fs-body:  17px;
+  --fs-small: 16px;
+  --lh-tight: 1.15;
+  --lh-body:  1.5;
+
+  /* Spacing */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px;
+  --page-pad: 18px;
+
+  /* Radius: none (print) */
+  --r-sm: 0; --r-md: 0; --r-lg: 0; --r-xl: 0; --r-pill: 0;
+
+  /* Size */
+  --tap: 48px;
+  --btn-h: 52px;
+
+  /* Shadows: hard offset "misregistration" */
+  --sh-card:  6px 6px 0 var(--v-rust);
+  --sh-btn:   inset 0 0 0 3px var(--v-ink), inset 0 0 0 5px var(--v-paper);
+  --sh-sheet: 0 -6px 0 var(--v-ink);
+}

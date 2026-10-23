@@ -1,0 +1,53 @@
+/* THEME: "halloween" (default). Everything look-specific lives in this folder:
+   tokens.css (designer's file, verbatim) + this file (fonts, extra tokens, art).
+   Paths below are relative to this file, so the folder is self-contained.
+   To make a new theme: copy this folder to public/themes/<name>/, edit, and point
+   the two <link> tags (and the favicon) in public/index.html at it. */
+
+@font-face { font-family: "Fredoka"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("fonts/fredoka-latin.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 200 1000; font-display: swap; src: url("fonts/nunito-latin.woff2") format("woff2"); }
+
+/* Extra tokens used by styles.css (beyond tokens.css) */
+:root {
+  --c-bar-track:     #FFE3CC;
+  --bar-fill:        repeating-linear-gradient(90deg, var(--c-yellow) 0 14px, var(--c-orange) 14px 28px, var(--c-corn-white) 28px 34px);
+  --c-card-full-bg:  #FBFFFC;
+  --c-slot-border:   #E8C9A8;
+  --c-grab:          #D9CBEA;
+  --c-add-text:      #4B2E73;
+  --c-add-sub:       #5E4B6E;
+  --c-on-accent:     #FFFFFF;
+  --c-scrim:         rgba(43, 27, 61, .55);
+  --c-placeholder:   #6E5D7E;
+  --sh-sheet-actions: 0 -10px 12px -10px rgba(43, 27, 61, .18);
+  --focus-ring:      0 0 0 4px rgba(142, 91, 208, .25);
+  --c-when-border:   var(--c-yellow);
+  --c-summary-border: var(--c-lilac-line);
+  --hero-h:          190px;   /* phone */
+  --hero-h-wide:     380px;   /* >= 760px */
+  --hero-pos:        50% 100%;
+  --hero-pos-wide:   50% 60%;
+}
+
+/* Art (all decorative). Swap images/sizes here; markup only has empty hooks. */
+.hero { background-image: url("art/header.svg"); background-color: var(--c-night); }
+.when-ico { background-image: url("art/pumpkin.svg"); width: 36px; height: 36px; }
+.peek { background-image: url("art/pumpkin.svg"); width: 64px; height: 60px; }
+.fullnote-ico { background-image: url("art/star.svg"); width: 26px; height: 26px; }
+.summary-ico { background-image: url("art/candy-corn.svg"); width: 22px; height: 22px; }
+.deco-a, .deco-d { background-image: url("art/candy-corn.svg"); width: 26px; height: 26px; }
+.deco-b { background-image: url("art/ghost-friendly.svg"); width: 40px; height: 40px; }
+.deco-c { background-image: url("art/bat.svg"); width: 56px; height: 30px; }
+
+/* Item icons: app.js sets data-icon on .ico (snacks, drinks, plates, napkins, cups,
+   utensils, table-cover, prizes, helpers, other). */
+.ico::before { background-image: url("icons/other.svg"); }
+.ico[data-icon="snacks"]::before { background-image: url("icons/snacks.svg"); }
+.ico[data-icon="drinks"]::before { background-image: url("icons/drinks.svg"); }
+.ico[data-icon="plates"]::before { background-image: url("icons/plates.svg"); }
+.ico[data-icon="napkins"]::before { background-image: url("icons/napkins.svg"); }
+.ico[data-icon="cups"]::before { background-image: url("icons/cups.svg"); }
+.ico[data-icon="utensils"]::before { background-image: url("icons/utensils.svg"); }
+.ico[data-icon="table-cover"]::before { background-image: url("icons/table-cover.svg"); }
+.ico[data-icon="prizes"]::before { background-image: url("icons/prizes.svg"); }
+.ico[data-icon="helpers"]::before { background-image: url("icons/helpers.svg"); }

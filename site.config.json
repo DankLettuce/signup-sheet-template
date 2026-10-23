@@ -1,0 +1,40 @@
+{
+  "_readme": "Everything a new sign-up page needs. Edit this, then run: node scripts/configure.mjs  (see README.md). Example data only.",
+  "site": {
+    "project_name": "example-class-signup",
+    "database_name": "example-class-signup",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "timezone": "America/New_York",
+    "theme": "vintage-poster"
+  },
+  "event": {
+    "event_name": "Halloween Party",
+    "teacher": "Ms. Rivera",
+    "class_name": "2nd Grade",
+    "school": "Maple Grove Elementary",
+    "party_date": "Friday, October 30, 2026",
+    "party_time": "TBD",
+    "intro": "Help make our class party a real treat! Tap what you can bring, then sign up once.",
+    "banner": "animated"
+  },
+  "organizer": {
+    "name": "Jamie Example",
+    "contact": "jamie@example.com"
+  },
+  "class_code": {
+    "use_code": true,
+    "_note": "Never put the code itself in this file or in git. Set it as a secret: npx wrangler pages secret put CLASS_CODE --project-name <project_name>. For local testing: CLASS_CODE=... in .dev.vars (gitignored)."
+  },
+  "add_your_own": "bottom",
+  "items": [
+    { "name": "Snacks/treats", "spots": 3 },
+    { "name": "Drinks (juice boxes/water)", "spots": 1 },
+    { "name": "Plates", "spots": 1 },
+    { "name": "Napkins", "spots": 1 },
+    { "name": "Cups", "spots": 1 },
+    { "name": "Forks/spoons", "spots": 1 },
+    { "name": "Table covers", "spots": 1 },
+    { "name": "Small prizes/goodie bag items", "spots": 1 },
+    { "name": "Party-day helpers", "spots": 3 }
+  ]
+}
